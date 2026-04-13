@@ -1,17 +1,19 @@
 name: Run Hyperlocal Engine
 
 on:
-  workflow_dispatch: # Allows you to run it manually with a button
+  workflow_dispatch: 
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Explicitly grant write permission
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Updated to v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5  # Updated to v5
         with:
           python-version: '3.9'
 
@@ -26,10 +28,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python ad_factory.py
 
-      - name: Commit results
+      - name: Commit and Push results
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add .
-          git commit -m "Updated leads and ads" || exit 0
-          git push
+          git add leads.csv final_ads.csv
+          # This command checks if there are changes; if not, it won't error out
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Updated leads and ads" && git push)
