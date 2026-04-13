@@ -36,8 +36,24 @@ def generate_ads():
                 try:
                     chat_completion = client.chat.completions.create(
                         messages=[
-                            {"role": "system", "content": "You are an elite local ad copywriter."},
-                            {"role": "user", "content": f"Write a punchy Facebook ad for {row['name']} in {row['neighborhood']}. Mention it is near {row['landmark']}. Max 40 words."}
+                            {
+                                "role": "system",
+                                "content": """You are an elite Direct-Response copywriter. You write ads that convert instantly. 
+                                NO fluff. NO puns. NO cheesy words like 'savor', 'masterpiece', or 'transport your taste buds'.
+                                Write raw, punchy, hyper-local ads focused on an irresistible offer."""
+                            },
+                            {
+                                "role": "user",
+                                "content": f"""Write a Facebook ad for a restaurant named {row['name']} located in {row['neighborhood']}. 
+                                
+                                Follow this exact structure:
+                                1. The Hook: Call out the locals who live or work near {row['landmark']}.
+                                2. The Pain: Acknowledge that finding a good lunch/dinner around here is tough or overpriced.
+                                3. The Offer: Create a ruthless, irresistible 'Mafia Offer' (e.g., 'Free Appetizer with any Main' or '2-for-1 Pizzas'). 
+                                4. The Urgency: Limit it to the first 20 people today.
+                                
+                                Keep it under 50 words. Make it sound like a local insider wrote it."""
+                            }
                         ],
                         model="llama-3.1-8b-instant",
                     )
