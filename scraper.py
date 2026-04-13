@@ -1,20 +1,30 @@
-import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
-def scrape_local_leads(city):
-    print(f"Scraping leads for {city}...")
-    # This is a placeholder for a real scraping logic
-    # In a real scenario, you'd use an API or more complex BeautifulSoup logic
-    data = {
-        "business_name": ["Joe's Pizza", "The Pasta House", "Green Cafe"],
-        "neighborhood": ["Downtown", "East Side", "Downtown"],
-        "rating": [3.5, 4.2, 3.8],
-        "landmark": ["Central Park", "Main St Bridge", "Central Park"]
-    }
-    df = pd.DataFrame(data)
+def get_hyperlocal_leads(neighborhood, category="restaurants"):
+    # This targets Yelp's search which is more scraper-friendly than Maps for beginners
+    url = f"https://www.yelp.com/search?find_desc={category}&find_loc={neighborhood}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    leads = []
+    # Logic to find business names and ratings
+    for biz in soup.select('div[class*="container"]'):
+        try:
+            name = biz.find('a').text
+            rating = biz.find('span', {'class': 'css-1p9ibgf'}).text # Rating class
+            # Only target businesses with < 4 stars (The "Optimization" Wedge)
+            if float(rating) < 4.0:
+                leads.append({"name": name, "rating": rating, "neighborhood": neighborhood})
+        except:
+            continue
+            
+    df = pd.DataFrame(leads)
     df.to_csv("leads.csv", index=False)
-    print("Leads saved to leads.csv")
+    print(f"✅ Found {len(df)} underperforming restaurants in {neighborhood}")
 
 if __name__ == "__main__":
-    scrape_local_leads("New York")
+    get_hyperlocal_leads("Brooklyn, NY") # Change this to your target city
