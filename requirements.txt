@@ -4,3 +4,4 @@ beautifulsoup4
 groq
 streamlit
 python-dotenv
+fpdf2
