@@ -5,7 +5,7 @@ import os
 from fpdf import FPDF
 import re
 
-st.set_page_config(page_title="Hyperlocal Agency Engine v3.0", layout="wide")
+st.set_page_config(page_title="Elite Hyperlocal Agency Tool", layout="wide")
 
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -13,127 +13,147 @@ except:
     st.error("⚠️ Please add your GROQ_API_KEY to the Streamlit Secrets!")
     st.stop()
 
+# Helper function to clean text for PDF generation (removes emojis that crash PDFs)
 def clean_for_pdf(text):
     return re.sub(r'[^\x00-\x7F]+', '', text)
 
-st.title("🛡️ Hyperlocal Agency Engine v3.0")
-st.markdown("Professional-grade AI Storyboarding & Business Strategy.")
+st.title("👑 Elite Agency-in-a-Box: Hyperlocal AI")
+st.markdown("Automate Offers, Video Direction, Competitor Conquesting, and Sales Pitching in one click.")
 
 # --- INPUT SECTION ---
-with st.expander("📍 CLIENT STRATEGY SETUP", expanded=True):
+with st.expander("📍 TARGET BUSINESS & STRATEGY SETUP", expanded=True):
     col1, col2, col3 = st.columns(3)
     with col1:
-        biz_name = st.text_input("Business Name", placeholder="e.g. Iron & Oak Coffee")
-        biz_niche = st.text_input("Business Niche", placeholder="e.g. Artisanal Roastery")
-        biz_address = st.text_input("Exact Address", placeholder="123 Main St, New York")
+        biz_name = st.text_input("Business Name", value="Kaydiem Script Lab")
+        biz_niche = st.text_input("Niche", value="Screenwriting Hub")
+        biz_address = st.text_input("Exact Address", value="123 Writer's Block, NY")
     with col2:
-        competitor_name = st.text_input("Competitor to Target", placeholder="e.g. Starbucks")
-        website_url = st.text_input("Website (Optional)")
-        gmaps_link = st.text_input("Google Maps Link")
+        competitor_name = st.text_input("Main Competitor (Optional)", placeholder="e.g., The Writer's Guild")
+        gmaps_link = st.text_input("Google Maps Link", value="https://goo.gl/maps/...")
+        website_url = st.text_input("Website (Optional)", placeholder="https://...")
     with col3:
-        platform = st.selectbox("Format", ["TikTok / IG Reels", "YouTube Pre-Roll", "LinkedIn B2B"])
-        num_scenes = st.slider("Scenes", 3, 10, 6)
-        tone = st.selectbox("Voice Tone", ["Aggressive & Punchy", "Sophisticated & Luxury", "Friendly & Local"])
+        platform = st.selectbox("Video Platform Format", ["TikTok / IG Reels", "YouTube Pre-Roll", "LinkedIn B2B"])
+        num_scenes = st.slider("Number of Scenes", 2, 10, 6)
         
-    generate_btn = st.button("⚡ GENERATE PRO-GRADE CAMPAIGN", type="primary", use_container_width=True)
+    generate_btn = st.button("⚡ GENERATE ENTIRE CAMPAIGN", type="primary", use_container_width=True)
 
 if generate_btn and biz_name and biz_address:
     
     cta_link = website_url if website_url else gmaps_link
-    
-    with st.spinner("💎 Engineering Elite Strategy & Cinematic Storyboard..."):
-        
-        # 1. THE STRATEGY PROMPT (Using 70B for Deep Reasoning)
-        strategy_system = """You are a World-Class Direct Response Marketing Consultant. 
-        You use the 'Hormozi Mafia Offer' framework. Your goal is to maximize ROI for the client.
-        Avoid all marketing cliches. No 'Imagine a world' or 'Unlock your potential'. 
-        Be raw, data-driven, and ruthless."""
-        
-        strategy_user = f"""Target Business: {biz_name} ({biz_niche}) at {biz_address}.
-        Competitor: {competitor_name}. 
-        Platform: {platform}.
-        Tone: {tone}.
+    cta_text = "visit our website" if website_url else "get directions"
+    comp_prompt = f"Targeting Strategy: Steal customers from rival {competitor_name} by offering a significantly lower barrier to entry or a more 'Mafia' offer." if competitor_name else ""
 
-        TASK:
-        1. Create 3 'Mafia Offers' based on the Value Equation: (Dream Outcome x Likelihood) / (Time Delay x Effort).
-        2. Write one 45-word 'Punchy' Ad Copy.
-        3. Write a high-stakes Cold Outreach DM for the agency to send this business owner.
+    with st.spinner("🧠 AI is architecting Elite Strategy & Cinematic Storyboards..."):
+        
+        # 1. GENERATE MAFIA OFFERS & OUTREACH SCRIPTS (ELITE LOGIC)
+        strategy_prompt = f"""
+        Act as a World-Class Direct Response Marketing Consultant. 
+        Target: {biz_name} ({biz_niche}) at {biz_address}.
+        {comp_prompt}
+        
+        Task 1: Write 3 "Mafia Offers". Use the Value Equation: (Dream Outcome x Perceived Likelihood) / (Time Delay x Effort). NO marketing cliches like 'imagine'. Be ruthless.
+        Task 2: Write one 45-word 'Punchy' Direct-response Ad Copy for {platform}. Link: {cta_link}.
+        Task 3: Write a cold outreach DM and Email to the owner of {biz_name}. Focus on ROI and the custom video asset I just created for them.
         """
-
+        
         strat_response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
-            messages=[{"role": "system", "content": strategy_system}, {"role": "user", "content": strategy_user}]
+            model="llama-3.1-70b-versatile", # UPGRADED MODEL
+            messages=[{"role": "system", "content": "You are a master of business strategy and high-stakes persuasion."}, {"role": "user", "content": strategy_prompt}]
         )
-        
-        # 2. THE STORYBOARD PROMPT (Cinematic Enhancement)
-        vid_system = """You are an Elite AI Video Director (Runway/Luma expert). 
-        You understand cinematic terminology: focal length, lighting styles (Golden Hour, Volumetric, Rim Lighting), and camera movement (FPV, Parallax, Dolly Zoom).
-        You strictly generate VISUAL descriptions. NO TEXT on screen.
-        You write VoiceOver scripts that sound like a real person talking, including natural pauses and contractions."""
+        strategy_data = strat_response.choices[0].message.content
 
-        vid_user = f"""Business: {biz_name}. Niche: {biz_niche}. Location: {biz_address}.
-        Scenes requested: {num_scenes}. Platform: {platform}. Tone: {tone}.
+        # 2. GENERATE PLATFORM-SPECIFIC STORYBOARD (ELITE CINEMATOGRAPHY)
+        vid_prompt = f"""
+        Act as an Elite AI Video Director (Runway/Luma expert). Create a {num_scenes}-scene storyboard for {biz_name}.
+        Platform: {platform}. 
 
-        STORYBOARD RULES:
-        - Each scene must be a different camera angle (Macro -> Wide -> POV -> Tracking).
-        - VISUAL PROMPT: Describe 4k photorealistic details. Mention 'Arri Alexa' or '35mm Film' quality.
-        - VOICEOVER: Write exactly what is said. Make it fast and high-retention.
-        - OVERLAY: 2-3 words of high-impact text to be added manually.
+        CRITICAL CINEMATOGRAPHY RULES:
+        1. VISUAL PROMPTS: Must specify camera gear (e.g., Arri Alexa, 35mm film), lighting (e.g., Volumetric, Golden Hour), and focal length (e.g., 24mm wide, 85mm macro).
+        2. DYNAMIC PACING: Scene 1 MUST be a hook (FPV or Dolly Zoom). Every scene must change angles.
+        3. NO TEXT IN VISUALS: Strictly visual descriptions only.
+        4. VOICE OVER: Must sound like a real, conversational human (use contractions, natural pauses).
 
-        Format:
+        Format EXACTLY like this for EACH of the {num_scenes} scenes:
         ### SCENE [X]
-        🎥 VISUAL: [Detailed Prompt]
-        🗣️ VO: [Spoken Script]
-        ✍️ TEXT: [Manual Overlay]
+        🎥 **Visual Prompt:** [Technical visual instructions]
+        🗣️ **VoiceOver Script:** [Natural spoken sentence]
+        ✍️ **Manual Text Overlay:** [2-5 high-impact words]
         """
-
+        
         vid_response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
-            messages=[{"role": "system", "content": vid_system}, {"role": "user", "content": vid_user}]
+            model="llama-3.1-70b-versatile", # UPGRADED MODEL
+            messages=[{"role": "system", "content": "You are a master cinematographer and ad director."}, {"role": "user", "content": vid_prompt}]
         )
+        storyboard_data = vid_response.choices[0].message.content
 
-        st.session_state['strategy'] = strat_response.choices[0].message.content
-        st.session_state['storyboard'] = vid_response.choices[0].message.content
+        # Save to session state
+        st.session_state['strategy'] = strategy_data
+        st.session_state['storyboard'] = storyboard_data
         st.session_state['biz_name'] = biz_name
 
-# --- DISPLAY OUTPUT ---
+# --- DISPLAY TABS --- (Structure exactly as you provided)
 if 'strategy' in st.session_state:
     st.markdown("---")
-    t1, t2, t3, t4 = st.tabs(["🔥 Strategy", "🎬 Storyboard", "✉️ Outreach", "📊 ROI & PDF"])
     
-    with t1:
-        st.markdown(st.session_state['strategy'].split("3.")[0])
+    tab1, tab2, tab3, tab4 = st.tabs(["🎁 The Mafia Offers & Copy", "🎬 The Storyboard", "💬 Client Outreach Scripts", "📄 Export Pitch Deck"])
     
-    with t2:
+    with tab1:
+        st.header(f"Strategy for {st.session_state['biz_name']}")
+        st.markdown(st.session_state['strategy'].split("Task 3")[0])
+
+    with tab2:
+        st.header(f"Platform: {platform}")
         st.markdown(st.session_state['storyboard'])
         
-    with t3:
-        st.info("Copy-paste these scripts to close the client.")
+    with tab3:
+        st.header("Sales & Outreach Scripts")
+        st.info("Copy and paste these directly to the business owner after you generate the video.")
         try:
-            st.markdown("### Outreach Script\n" + st.session_state['strategy'].split("3.")[1])
+            st.markdown("Task 3" + st.session_state['strategy'].split("Task 3")[1])
         except:
             st.markdown(st.session_state['strategy'])
 
-    with t4:
+    with tab4:
+        st.header("The ROI Pitch & Proposal")
+        
         colA, colB = st.columns(2)
         with colA:
-            st.subheader("Profit Simulator")
-            spend = st.slider("Ad Spend ($)", 100, 2000, 500)
-            aov = st.number_input("Avg Order Value ($)", value=60.00)
-            leads = int(spend / 3) # assumes $3 CPL
-            sales = int(leads * 0.10) # 10% conv
-            st.metric("Total Revenue", f"${sales * aov:,.2f}", delta=f"${(sales*aov)-spend:,.2f} Profit")
-        
+            st.subheader("Live ROI Simulator")
+            ad_spend = st.slider("Proposed Ad Spend ($)", 100, 2000, 500)
+            cpl = st.number_input("Cost Per Lead ($)", value=3.00)
+            conv_rate = st.slider("Conversion Rate (%)", 1, 50, 10)
+            aov = st.number_input("Average Order Value ($)", value=100.00)
+            
+            walk_ins = int((ad_spend / cpl) * (conv_rate / 100))
+            revenue = walk_ins * aov
+            st.success(f"**Projected ROI:** ${revenue:,.2f} from ${ad_spend} ad spend.")
+
         with colB:
+            st.subheader("Generate PDF Proposal")
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
-            pdf.cell(200, 10, txt=f"Proposal: {st.session_state['biz_name']}", ln=True, align='C')
+            pdf.cell(200, 10, txt=f"Hyperlocal Marketing Proposal: {st.session_state['biz_name']}", ln=True, align='C')
+            pdf.ln(10)
             pdf.multi_cell(0, 10, txt=clean_for_pdf(st.session_state['strategy']))
             pdf.add_page()
+            pdf.cell(200, 10, txt="Video Storyboard Concepts", ln=True, align='C')
+            pdf.ln(10)
             pdf.multi_cell(0, 10, txt=clean_for_pdf(st.session_state['storyboard']))
+            pdf.add_page()
+            pdf.cell(200, 10, txt="Financial Projections", ln=True, align='C')
+            pdf.ln(10)
+            pdf.multi_cell(0, 10, txt=f"Proposed Monthly Ad Spend: ${ad_spend}\nProjected Walk-ins: {walk_ins}\nProjected Gross Revenue: ${revenue:,.2f}")
             
-            pdf_path = f"proposal.pdf"
-            pdf.output(pdf_path)
-            with open(pdf_path, "rb") as f:
-                st.download_button("📥 Download PDF Proposal", f, file_name=f"Proposal_{st.session_state['biz_name']}.pdf", type="primary")
+            pdf_file_path = f"proposal_{st.session_state['biz_name'].replace(' ', '_')}.pdf"
+            pdf.output(pdf_file_path)
+            
+            with open(pdf_file_path, "rb") as pdf_file:
+                PDFbyte = pdf_file.read()
+            st.download_button(
+                label="📥 Download PDF Pitch Deck",
+                data=PDFbyte,
+                file_name=pdf_file_path,
+                mime='application/octet-stream',
+                type="primary"
+            )
