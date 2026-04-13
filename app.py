@@ -41,48 +41,56 @@ if generate_btn and biz_name and biz_address:
     
     cta_link = website_url if website_url else gmaps_link
     cta_text = "visit our website" if website_url else "get directions"
-    comp_prompt = f"Targeting Strategy: Steal customers from rival {competitor_name} by offering a significantly lower barrier to entry or a more 'Mafia' offer." if competitor_name else ""
+    comp_prompt = f"Design the offer to steal customers away from their rival: {competitor_name}." if competitor_name else ""
 
-    with st.spinner("🧠 AI is architecting Elite Strategy & Cinematic Storyboards..."):
+    with st.spinner("🧠 AI is architecting Offers, Storyboards, and Sales Scripts..."):
         
-        # 1. GENERATE MAFIA OFFERS & OUTREACH SCRIPTS (ELITE LOGIC)
+        # 1. GENERATE MAFIA OFFERS & OUTREACH SCRIPTS
         strategy_prompt = f"""
-        Act as a World-Class Direct Response Marketing Consultant. 
-        Target: {biz_name} ({biz_niche}) at {biz_address}.
+        Business: {biz_name} ({biz_niche}) at {biz_address}.
+        Platform: {platform}.
         {comp_prompt}
         
-        Task 1: Write 3 "Mafia Offers". Use the Value Equation: (Dream Outcome x Perceived Likelihood) / (Time Delay x Effort). NO marketing cliches like 'imagine'. Be ruthless.
-        Task 2: Write one 45-word 'Punchy' Direct-response Ad Copy for {platform}. Link: {cta_link}.
-        Task 3: Write a cold outreach DM and Email to the owner of {biz_name}. Focus on ROI and the custom video asset I just created for them.
-        """
+        Task 1: Write 3 "Mafia Offers" (Irresistible, no-brainer offers) for this business. 
+        Task 2: Write a direct-response Ad Copy under 50 words driving traffic to {cta_link}.
+        Task 3: Write a cold outreach DM (Instagram/WhatsApp) and a Cold Email that I (the agency owner) can send to {biz_name} to pitch this campaign. Focus on ROI and the new video asset.
         
+        Format clearly with headers.
+        """
         strat_response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile", # UPGRADED MODEL
-            messages=[{"role": "system", "content": "You are a master of business strategy and high-stakes persuasion."}, {"role": "user", "content": strategy_prompt}]
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": "You are a 7-figure marketing agency owner."}, {"role": "user", "content": strategy_prompt}]
         )
         strategy_data = strat_response.choices[0].message.content
 
-        # 2. GENERATE PLATFORM-SPECIFIC STORYBOARD (ELITE CINEMATOGRAPHY)
-        vid_prompt = f"""
-        Act as an Elite AI Video Director (Runway/Luma expert). Create a {num_scenes}-scene storyboard for {biz_name}.
-        Platform: {platform}. 
+        # 2. GENERATE PLATFORM-SPECIFIC STORYBOARD
+        plat_rules = ""
+        if platform == "TikTok / IG Reels":
+            plat_rules = "Must have a fast 1-second visual hook. VoiceOver must sound native, UGC, and conversational."
+        elif platform == "YouTube Pre-Roll":
+            plat_rules = "Must hook the viewer in the first 5 seconds before the 'Skip Ad' button appears. High-quality cinematic tone."
+        else:
+            plat_rules = "Professional, corporate tone. Focus on networking, ROI, and high-value B2B benefits."
 
-        CRITICAL CINEMATOGRAPHY RULES:
-        1. VISUAL PROMPTS: Must specify camera gear (e.g., Arri Alexa, 35mm film), lighting (e.g., Volumetric, Golden Hour), and focal length (e.g., 24mm wide, 85mm macro).
-        2. DYNAMIC PACING: Scene 1 MUST be a hook (FPV or Dolly Zoom). Every scene must change angles.
-        3. NO TEXT IN VISUALS: Strictly visual descriptions only.
-        4. VOICE OVER: Must sound like a real, conversational human (use contractions, natural pauses).
+        vid_prompt = f"""
+        Create a {num_scenes}-scene video ad storyboard for {biz_name} ({biz_niche}).
+        Platform Format: {platform}. {plat_rules}
+        {comp_prompt}
+
+        CRITICAL RULES:
+        1. NEVER REPEAT ANGLES. Force dynamic camera changes.
+        2. NO TEXT IN THE VISUAL PROMPT. Visuals only.
+        3. MANDATORY: 2-5 words for the Manual Text Overlay on EVERY scene.
 
         Format EXACTLY like this for EACH of the {num_scenes} scenes:
         ### SCENE [X]
-        🎥 **Visual Prompt:** [Technical visual instructions]
-        🗣️ **VoiceOver Script:** [Natural spoken sentence]
-        ✍️ **Manual Text Overlay:** [2-5 high-impact words]
+        🎥 **Visual Prompt:** [Cinematic visual instructions for Runway/Luma]
+        🗣️ **VoiceOver Script:** [1 snappy sentence matching the {platform} tone]
+        ✍️ **Manual Text Overlay:** [2-5 punchy words]
         """
-        
         vid_response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile", # UPGRADED MODEL
-            messages=[{"role": "system", "content": "You are a master cinematographer and ad director."}, {"role": "user", "content": vid_prompt}]
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": "You are an elite Video Director."}, {"role": "user", "content": vid_prompt}]
         )
         storyboard_data = vid_response.choices[0].message.content
 
@@ -91,15 +99,16 @@ if generate_btn and biz_name and biz_address:
         st.session_state['storyboard'] = storyboard_data
         st.session_state['biz_name'] = biz_name
 
-# --- DISPLAY TABS --- (Structure exactly as you provided)
+# --- DISPLAY TABS ---
 if 'strategy' in st.session_state:
     st.markdown("---")
     
+    # Create Tabs for clean organization
     tab1, tab2, tab3, tab4 = st.tabs(["🎁 The Mafia Offers & Copy", "🎬 The Storyboard", "💬 Client Outreach Scripts", "📄 Export Pitch Deck"])
     
     with tab1:
         st.header(f"Strategy for {st.session_state['biz_name']}")
-        st.markdown(st.session_state['strategy'].split("Task 3")[0])
+        st.markdown(st.session_state['strategy'].split("Task 3")[0]) # Shows Offers and Ad Copy
 
     with tab2:
         st.header(f"Platform: {platform}")
@@ -111,7 +120,7 @@ if 'strategy' in st.session_state:
         try:
             st.markdown("Task 3" + st.session_state['strategy'].split("Task 3")[1])
         except:
-            st.markdown(st.session_state['strategy'])
+            st.markdown(st.session_state['strategy']) # Fallback
 
     with tab4:
         st.header("The ROI Pitch & Proposal")
@@ -130,9 +139,14 @@ if 'strategy' in st.session_state:
 
         with colB:
             st.subheader("Generate PDF Proposal")
+            st.write("Generate a professional white-labeled PDF to send to the client.")
+            
+            # PDF Generation Logic
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
+            
+            # Add Content to PDF
             pdf.cell(200, 10, txt=f"Hyperlocal Marketing Proposal: {st.session_state['biz_name']}", ln=True, align='C')
             pdf.ln(10)
             pdf.multi_cell(0, 10, txt=clean_for_pdf(st.session_state['strategy']))
@@ -145,9 +159,11 @@ if 'strategy' in st.session_state:
             pdf.ln(10)
             pdf.multi_cell(0, 10, txt=f"Proposed Monthly Ad Spend: ${ad_spend}\nProjected Walk-ins: {walk_ins}\nProjected Gross Revenue: ${revenue:,.2f}")
             
+            # Save PDF temporarily
             pdf_file_path = f"proposal_{st.session_state['biz_name'].replace(' ', '_')}.pdf"
             pdf.output(pdf_file_path)
             
+            # Download Button
             with open(pdf_file_path, "rb") as pdf_file:
                 PDFbyte = pdf_file.read()
             st.download_button(
