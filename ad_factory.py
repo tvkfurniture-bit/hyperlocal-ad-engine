@@ -1,35 +1,42 @@
 import pandas as pd
-import openai
+from groq import Groq
 import os
 
 def generate_ads():
     try:
         df = pd.read_csv("leads.csv")
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GROQ_API_KEY")
 
-        if not api_key or api_key == "":
-            print("⚠️ No API Key found. Generating placeholder ads for testing...")
-            df['generated_ad'] = "Promo for " + df['business_name'] + " near " + df['landmark'] + "! Visit us today."
+        if not api_key:
+            print("⚠️ No GROQ_API_KEY found. Using fallback text.")
+            df['generated_ad'] = "Special offer for " + df['business_name'] + " near " + df['landmark'] + "!"
         else:
-            print("✅ API Key found. Generating AI ads...")
-            client = openai.OpenAI(api_key=api_key)
+            print("🚀 Groq API Key found. Generating Free AI ads...")
+            client = Groq(api_key=api_key)
+            
             ad_results = []
             for _, row in df.iterrows():
-                prompt = f"Write a local Facebook ad for {row['business_name']} near {row['landmark']}."
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt}]
+                # Using Llama3-8b which is free and fast on Groq
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"Write a short, punchy Facebook ad for {row['business_name']} in {row['neighborhood']}. Mention it is near {row['landmark']}. Max 30 words.",
+                        }
+                    ],
+                    model="llama3-8b-8192",
                 )
-                ad_results.append(response.choices[0].message.content)
+                ad_results.append(chat_completion.choices[0].message.content)
+            
             df['generated_ad'] = ad_results
 
         df.to_csv("final_ads.csv", index=False)
-        print("✅ Process complete. final_ads.csv created.")
+        print("✅ Success! final_ads.csv created.")
         
     except Exception as e:
-        print(f"❌ Error occurred: {e}")
-        # Create a dummy file anyway so the next step doesn't fail
-        pd.DataFrame({"error": [str(e)]}).to_csv("final_ads.csv", index=False)
+        print(f"❌ Error: {e}")
+        # Ensure the workflow doesn't fail
+        pd.DataFrame({"status": ["Error"], "msg": [str(e)]}).to_csv("final_ads.csv", index=False)
 
 if __name__ == "__main__":
     generate_ads()
