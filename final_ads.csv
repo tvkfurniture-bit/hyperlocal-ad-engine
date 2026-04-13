@@ -1,2 +1,4 @@
-status,msg
-Error,No columns to parse from file
+name,neighborhood,landmark,generated_ad
+Luigi's Artisan Pizza,Downtown,The Art Museum,"""Savor the flavor of Italy in Downtown! Luigi's Artisan Pizza, just steps from The Art Museum, serves up authentic pies that will transport your taste buds. Get 10% off your first order - treat yourself to a masterpiece!"""
+Green Bowl Salads,Westside,Central Park,"""Fuel up for a park-perfect day at Green Bowl Salads, just steps from Central Park! Delicious, made-to-order bowls made with love and locally-sourced ingredients. Taste the difference in every bite! Limited time offer: use code GREENPARK for 10% off your first order!"""
+Iron & Oak Coffee,East District,The Tech Hub,"""Fuel your startup at Iron & Oak Coffee. Conveniently located near The Tech Hub, we serve expertly crafted coffee to help you power through the day. Swing by for a caffeine boost and community vibes in East District!"""
