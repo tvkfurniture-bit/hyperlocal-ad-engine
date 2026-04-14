@@ -8,6 +8,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Elite Hyperlocal Agency Tool", layout="wide")
 
+# Connect to Groq via Streamlit Secrets
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except:
@@ -15,36 +16,29 @@ except:
     st.stop()
 
 # ==========================================
-# 🛡️ ARMOR-PLATED TEXT CLEANER
+# 🛡️ ARMOR-PLATED TEXT CLEANER (Prevents PDF Crashes)
 # ==========================================
 def clean_for_pdf(text):
     if not text:
         return ""
-    # 1. Replace weird AI quotes/dashes with standard ones
     text = text.replace('"', '"').replace('"', '"').replace('’', "'").replace('‘', "'").replace('—', '-')
-    
-    # 2. Break apart massively long URLs so they don't crash the PDF
     words = text.split(' ')
     safe_words = []
     for word in words:
-        if len(word) > 65: # If a word/URL is longer than 65 characters, slice it
+        if len(word) > 65: 
             safe_words.append(word[:65] + " " + word[65:])
         else:
             safe_words.append(word)
     text = ' '.join(safe_words)
-    
-    # 3. Strip emojis and force into Latin-1 encoding (The only format FPDF natively accepts)
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 # ==========================================
-# 🎨 CUSTOM PDF GENERATOR CLASS
+# 🎨 CUSTOM PREMIUM PDF GENERATOR CLASS
 # ==========================================
 class AgencyPDF(FPDF):
     def header(self):
-        # Dark Blue Top Banner
         self.set_fill_color(10, 37, 64)
         self.rect(0, 0, 210, 25, 'F')
-        
         self.set_y(10)
         self.set_font('Arial', 'B', 16)
         self.set_text_color(255, 255, 255)
@@ -74,15 +68,15 @@ class AgencyPDF(FPDF):
                 self.ln(4)
                 continue
             
-            self.set_x(10) # Reset X margin to prevent horizontal space errors
+            self.set_x(10)
             clean_line = line.replace('**', '').replace('*', '')
             
             if clean_line.startswith('### SCENE'):
                 self.ln(6)
                 self.set_font('Arial', 'B', 12)
-                self.set_text_color(0, 112, 243) # Bright Blue
+                self.set_text_color(0, 112, 243)
                 self.multi_cell(0, 7, clean_line.replace('### ', ''))
-            elif clean_line.startswith('###') or clean_line.startswith('##'):
+            elif clean_line.startswith('###') or clean_line.startswith('##') or clean_line.startswith('Task'):
                 self.ln(4)
                 self.set_font('Arial', 'B', 12)
                 self.set_text_color(10, 37, 64)
@@ -102,87 +96,108 @@ class AgencyPDF(FPDF):
 st.title("🎬 Elite Agency-in-a-Box: Hollywood Director Edition")
 st.markdown("Automate Mafia Offers, Cinematic Video Direction, and ROI Sales Pitching in one click.")
 
+# --- INPUT SECTION ---
 with st.expander("📍 TARGET BUSINESS & STRATEGY SETUP", expanded=True):
     col1, col2, col3 = st.columns(3)
     with col1:
-        biz_name = st.text_input("Business Name", value="Foster Fork - The Taste Place")
-        biz_niche = st.text_input("Niche", value="Fine Dining")
-        biz_address = st.text_input("Exact Address", value="Downtown Urban Area")
+        biz_name = st.text_input("Business Name", value="Kaydiem Script Lab")
+        biz_niche = st.text_input("Niche", value="Screenwriting Hub")
+        biz_address = st.text_input("Exact Address", value="123 Writer's Block, NY")
     with col2:
-        competitor_name = st.text_input("Main Competitor (Optional)")
+        competitor_name = st.text_input("Main Competitor (Optional)", placeholder="e.g., The Writer's Guild")
         gmaps_link = st.text_input("Google Maps Link", value="https://goo.gl/maps/...")
-        website_url = st.text_input("Website (Optional)")
+        website_url = st.text_input("Website (Optional)", placeholder="https://...")
     with col3:
         platform = st.selectbox("Video Platform Format", ["TikTok / IG Reels", "YouTube Pre-Roll", "LinkedIn B2B"])
-        num_scenes = st.slider("Number of Scenes", 2, 10, 5)
+        num_scenes = st.slider("Number of Scenes", 2, 10, 6)
         
     generate_btn = st.button("⚡ GENERATE MASTER CAMPAIGN", type="primary", use_container_width=True)
 
 if generate_btn and biz_name and biz_address:
+    
     cta_link = website_url if website_url else gmaps_link
     cta_text = "visit our website" if website_url else "get directions"
-    comp_prompt = f"The client wants to steal market share from their rival: {competitor_name}." if competitor_name else ""
+    comp_prompt = f"The client wants to outperform {competitor_name}." if competitor_name else ""
 
-    with st.spinner(f"🧠 AI is architecting Hollywood-grade prompts for {platform}..."):
+    with st.spinner("🧠 Director is drafting photorealistic cinematic prompts..."):
         
-        # 1. STRATEGY GENERATION
+        # 1. GENERATE MASTER STRATEGY (Your Exact Preferred Prompt)
         strategy_prompt = f"""
         Business: {biz_name} ({biz_niche}) at {biz_address}.
         {comp_prompt}
-        Write the campaign strategy. Format exactly with these headers:
-        ### TASK 1 & 2: MAFIA OFFERS AND AD COPY
-        - Write 3 'Mafia Offers'.
-        - Write direct-response Ad Copy (under 50 words). CTA MUST be: "Tap the link below to {cta_text} instantly: {cta_link}"
-        ### TASK 3: OUTREACH SCRIPTS
-        - Write a cold DM and Cold Email.
+        Task 1: Write 3 'Mafia Offers'.
+        Task 2: Write direct-response Ad Copy under 50 words. The Call to Action MUST be: "Tap the link below to {cta_text} instantly: {cta_link}"
+        Task 3: Write a cold outreach DM and Email for the agency owner.
         """
-        strat_response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": "You are a 7-figure marketing agency owner."}, {"role": "user", "content": strategy_prompt}])
+        strat_response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": "You are a 7-figure marketing agency owner."}, {"role": "user", "content": strategy_prompt}]
+        )
         strategy_data = strat_response.choices[0].message.content
 
-        # 2. STORYBOARD GENERATION
-        plat_rules = "Fast camera movements, photorealistic." if platform == "TikTok / IG Reels" else "High-budget cinematic feel, dramatic lighting."
+        # 2. THE ENHANCED HOLLYWOOD STORYBOARD ENGINE (Your Exact Preferred Prompt)
         vid_prompt_instruction = f"""
-        Create a {num_scenes}-scene hyper-realistic video ad for {biz_name} ({biz_niche}). Platform: {platform}. {plat_rules}
-        RULES:
-        1. NO TEXT in visual descriptions.
-        2. 6-POINT FRAMEWORK: Style, Subject, Action, Lens, Lighting, Texture.
-        3. Scenes MUST alternate (Wide, Medium, Macro).
-        Format EXACTLY like this:
+        Act as a Hollywood Cinematographer and Senior Ad Director for a 2026 marketing agency.
+        Create a {num_scenes}-scene hyper-realistic video ad for {biz_name} ({biz_niche}).
+        Platform Format: {platform}.
+
+        PROMPT ENGINEERING RULES FOR MAXIMUM REALISM:
+        1. NO TEXT: Do not include words or logos in the visual description.
+        2. THE 6-POINT FRAMEWORK: Every prompt MUST include:
+           - STYLE: (e.g., Photorealistic, Cinematic, 8k, IMAX)
+           - SUBJECT: (e.g., A focused writer, a steaming cup of artisan coffee)
+           - ACTION/MOTION: (e.g., slow-motion push-in, FPV drone sweep, parallax)
+           - LENS & GEAR: (e.g., 35mm Anamorphic, 100mm Macro, Sony FX3)
+           - LIGHTING: (e.g., Volumetric fog, Golden Hour, Moody Rim Lighting)
+           - TEXTURE: (e.g., visible skin pores, steam particles, dust motes in sunbeams)
+        3. VARIETY: Scenes MUST alternate between Wide, Medium, and Macro shots.
+
+        Format for each scene:
         ### SCENE [X]
-        Enhanced Visual Prompt: [Min 60 words describing scene]
-        VoiceOver Script: [1 snappy sentence]
-        Manual Text Overlay: [2-5 bold marketing words]
+        🎥 **Enhanced Visual Prompt:** [Min 60 words of descriptive cinematic instruction]
+        🗣️ **VoiceOver Script:** [1 snappy, conversational sentence]
+        ✍️ **Manual Text Overlay:** [2-5 bold marketing words]
         """
-        vid_response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": "You are an Elite Cinematic Prompt Engineer."}, {"role": "user", "content": vid_prompt_instruction}])
+        
+        vid_response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": "You are an Elite Cinematic Prompt Engineer. You write long, extremely detailed descriptions for AI Video generators."}, {"role": "user", "content": vid_prompt_instruction}]
+        )
         storyboard_data = vid_response.choices[0].message.content
 
         st.session_state['strategy'] = strategy_data
         st.session_state['storyboard'] = storyboard_data
         st.session_state['biz_name'] = biz_name
 
+# --- DISPLAY TABS ---
 if 'strategy' in st.session_state:
     st.markdown("---")
-    tab1, tab2, tab3, tab4 = st.tabs(["🎁 Offers & Copy", "🎬 Master Storyboard", "💬 Sales Scripts", "📊 Export Premium PDF"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🎁 Mafia Offers", "🎬 Master Storyboard", "💬 Outreach Scripts", "📄 Premium PDF Export"])
     
+    # Safely split based on your preferred prompt structure
     try:
-        offers_part = st.session_state['strategy'].split("### TASK 3: OUTREACH SCRIPTS")[0].replace("### TASK 1 & 2: MAFIA OFFERS AND AD COPY", "")
-        outreach_part = st.session_state['strategy'].split("### TASK 3: OUTREACH SCRIPTS")[1]
+        offers_part = st.session_state['strategy'].split("Task 3")[0]
+        outreach_part = "Task 3" + st.session_state['strategy'].split("Task 3")[1]
     except:
         offers_part = st.session_state['strategy']
-        outreach_part = "Please refer to the bottom of the Offers tab."
+        outreach_part = "Please refer to the bottom of the Strategy tab."
 
     with tab1:
         st.header("Campaign Strategy")
         st.markdown(offers_part)
+
     with tab2:
-        st.header(f"Master Storyboard ({platform})")
+        st.header("Master Storyboard (Hollywood Grade)")
+        st.info("💡 **PRO TIP:** Copy these visual prompts into Runway Gen-3 Alpha or Luma Dream Machine for 100% photorealism.")
         st.markdown(st.session_state['storyboard'])
+        
     with tab3:
         st.header("Sales & Outreach Scripts")
         st.markdown(outreach_part)
 
     with tab4:
-        st.header("ROI Simulator & Premium PDF Export")
+        st.header("ROI Simulator & PDF Export")
+        
         colA, colB = st.columns(2)
         with colA:
             st.subheader("Live ROI Math")
@@ -195,13 +210,16 @@ if 'strategy' in st.session_state:
             revenue = walk_ins * aov
             profit = revenue - ad_spend
             
+            st.markdown("---")
+            st.metric(label="📍 Captured Local Leads", value=f"{int(ad_spend/cpl)} people")
+            st.metric(label="🚗 Guaranteed Walk-ins", value=f"{walk_ins} customers")
             st.metric(label="💵 Projected Gross Revenue", value=f"${revenue:,.2f}", delta=f"${profit:,.2f} ROI")
 
         with colB:
             st.subheader("Generate Pitch Deck")
             st.write("Generate a pristine, agency-branded PDF Proposal.")
             
-            # PDF Generation
+            # PDF Generation using the Premium Agency Class
             pdf = AgencyPDF()
             pdf.add_page()
             
@@ -239,7 +257,6 @@ if 'strategy' in st.session_state:
             
             # Final output and download
             try:
-                # Remove spaces from filename safely
                 safe_biz_name = "".join([c for c in st.session_state['biz_name'] if c.isalpha() or c.isdigit()]).rstrip()
                 pdf_file_path = f"Growth_Blueprint_{safe_biz_name}.pdf"
                 pdf.output(pdf_file_path)
