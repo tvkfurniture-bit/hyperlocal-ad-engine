@@ -4,34 +4,100 @@ from groq import Groq
 import os
 from fpdf import FPDF
 import re
+from datetime import datetime
 
 st.set_page_config(page_title="Elite Hyperlocal Agency Tool", layout="wide")
 
-# Connect to Groq via Streamlit Secrets
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except:
     st.error("⚠️ Please add your GROQ_API_KEY to the Streamlit Secrets!")
     st.stop()
 
-# Helper to prevent PDF crashing from emojis/special characters
 def clean_for_pdf(text):
+    # Removes emojis and unprintable characters that crash FPDF
     return re.sub(r'[^\x00-\x7F]+', '', text)
 
+# ==========================================
+# 🎨 CUSTOM PDF GENERATOR CLASS (ENTERPRISE)
+# ==========================================
+class AgencyPDF(FPDF):
+    def header(self):
+        # Dark Blue Top Banner
+        self.set_fill_color(10, 37, 64)
+        self.rect(0, 0, 210, 25, 'F')
+        
+        self.set_y(10)
+        self.set_font('Arial', 'B', 16)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 5, 'HYPERLOCAL GROWTH BLUEPRINT', 0, 1, 'C')
+        self.set_y(35) # Reset Y below header
+
+    def footer(self):
+        # Light Gray Footer
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 10, f'Confidential Strategy Document  |  Page {self.page_no()}', 0, 0, 'C')
+
+    def chapter_title(self, title, color=(10, 37, 64)):
+        self.ln(5)
+        self.set_font('Arial', 'B', 14)
+        self.set_text_color(*color)
+        self.cell(0, 10, title, 0, 1, 'L')
+        self.set_draw_color(200, 200, 200)
+        self.line(10, self.get_y(), 200, self.get_y()) # Underline
+        self.ln(5)
+
+    def print_smart_text(self, text):
+        self.set_font('Arial', '', 11)
+        self.set_text_color(50, 50, 50)
+        
+        for line in text.split('\n'):
+            line = line.strip()
+            if not line:
+                self.ln(4)
+                continue
+            
+            # Remove Markdown asterisks
+            clean_line = line.replace('**', '').replace('*', '')
+            
+            # Handle Headers natively
+            if clean_line.startswith('### SCENE'):
+                self.ln(6)
+                self.set_font('Arial', 'B', 13)
+                self.set_text_color(0, 112, 243) # Bright Blue for Scenes
+                self.cell(0, 8, clean_line.replace('### ', ''), 0, 1)
+            elif clean_line.startswith('###') or clean_line.startswith('##'):
+                self.ln(4)
+                self.set_font('Arial', 'B', 12)
+                self.set_text_color(10, 37, 64)
+                self.cell(0, 8, clean_line.replace('#', '').strip(), 0, 1)
+            elif clean_line.startswith('- '):
+                self.set_font('Arial', '', 11)
+                self.set_text_color(50, 50, 50)
+                self.multi_cell(0, 6, "  " + chr(149) + " " + clean_line[2:])
+            else:
+                self.set_font('Arial', '', 11)
+                self.set_text_color(50, 50, 50)
+                self.multi_cell(0, 6, clean_line)
+
+# ==========================================
+# 🚀 MAIN STREAMLIT APP LOGIC
+# ==========================================
 st.title("🎬 Elite Agency-in-a-Box: Hollywood Director Edition")
 st.markdown("Automate Mafia Offers, Cinematic Video Direction, and ROI Sales Pitching in one click.")
 
-# --- INPUT SECTION ---
 with st.expander("📍 TARGET BUSINESS & STRATEGY SETUP", expanded=True):
     col1, col2, col3 = st.columns(3)
     with col1:
-        biz_name = st.text_input("Business Name", value="Kaydiem Script Lab")
-        biz_niche = st.text_input("Niche", value="Screenwriting Hub")
-        biz_address = st.text_input("Exact Address", value="123 Writer's Block, NY")
+        biz_name = st.text_input("Business Name", value="Foster Fork - The Taste Place")
+        biz_niche = st.text_input("Niche", value="Fine Dining")
+        biz_address = st.text_input("Exact Address", value="Downtown Urban Area")
     with col2:
-        competitor_name = st.text_input("Main Competitor (Optional)", placeholder="e.g., The Writer's Guild")
+        competitor_name = st.text_input("Main Competitor (Optional)")
         gmaps_link = st.text_input("Google Maps Link", value="https://goo.gl/maps/...")
-        website_url = st.text_input("Website (Optional)", placeholder="https://...")
+        website_url = st.text_input("Website (Optional)")
     with col3:
         platform = st.selectbox("Video Platform Format", ["TikTok / IG Reels", "YouTube Pre-Roll", "LinkedIn B2B"])
         num_scenes = st.slider("Number of Scenes", 2, 10, 5)
@@ -39,84 +105,51 @@ with st.expander("📍 TARGET BUSINESS & STRATEGY SETUP", expanded=True):
     generate_btn = st.button("⚡ GENERATE MASTER CAMPAIGN", type="primary", use_container_width=True)
 
 if generate_btn and biz_name and biz_address:
-    
-    # Determine the Call to Action
     cta_link = website_url if website_url else gmaps_link
     cta_text = "visit our website" if website_url else "get directions"
     comp_prompt = f"The client wants to steal market share from their rival: {competitor_name}." if competitor_name else ""
 
     with st.spinner(f"🧠 AI is architecting Hollywood-grade prompts for {platform}..."):
         
-        # 1. GENERATE MASTER STRATEGY (Offers & Outreach)
+        # 1. STRATEGY GENERATION
         strategy_prompt = f"""
         Business: {biz_name} ({biz_niche}) at {biz_address}.
         {comp_prompt}
-        
-        Write the campaign strategy. You MUST format your response exactly with these two headers:
-        
+        Write the campaign strategy. Format exactly with these headers:
         ### TASK 1 & 2: MAFIA OFFERS AND AD COPY
-        - Write 3 'Mafia Offers' (Irresistible, no-brainer deals).
-        - Write direct-response Ad Copy (under 50 words). The Call to Action MUST be: "Tap the link below to {cta_text} instantly: {cta_link}"
-        
+        - Write 3 'Mafia Offers'.
+        - Write direct-response Ad Copy (under 50 words). CTA MUST be: "Tap the link below to {cta_text} instantly: {cta_link}"
         ### TASK 3: OUTREACH SCRIPTS
-        - Write a cold DM and Cold Email that I (the agency owner) can send to {biz_name} to pitch this campaign. Focus on the new video asset and ROI.
+        - Write a cold DM and Cold Email.
         """
-        strat_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": "You are a 7-figure marketing agency owner."}, {"role": "user", "content": strategy_prompt}]
-        )
+        strat_response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": "You are a 7-figure marketing agency owner."}, {"role": "user", "content": strategy_prompt}])
         strategy_data = strat_response.choices[0].message.content
 
-        # 2. THE ENHANCED HOLLYWOOD STORYBOARD ENGINE
-        # Set dynamic rules based on the platform selected
-        plat_rules = ""
-        if platform == "TikTok / IG Reels":
-            plat_rules = "Fast camera movements (whip pans, FPV drone, handheld POV), UGC feel but photorealistic."
-        elif platform == "YouTube Pre-Roll":
-            plat_rules = "High-budget cinematic feel, smooth gimbals, dramatic lighting, high tension before the 5-sec skip."
-        else:
-            plat_rules = "Corporate aesthetic, clean bright lighting, premium Sony/RED camera feel, slow steady pans."
-
+        # 2. STORYBOARD GENERATION
+        plat_rules = "Fast camera movements, photorealistic." if platform == "TikTok / IG Reels" else "High-budget cinematic feel, dramatic lighting."
         vid_prompt_instruction = f"""
-        Act as a Hollywood Cinematographer and Senior Ad Director for a 2026 marketing agency.
-        Create a {num_scenes}-scene hyper-realistic video ad for {biz_name} ({biz_niche}).
-        Platform Format: {platform}. {plat_rules}
-
-        PROMPT ENGINEERING RULES FOR MAXIMUM REALISM:
-        1. NO TEXT: Do not include words or logos in the visual description.
-        2. THE 6-POINT FRAMEWORK: Every prompt MUST include:
-           - STYLE: (e.g., Photorealistic, Cinematic, 8k)
-           - SUBJECT: (Highly detailed description of the subject/object)
-           - ACTION/MOTION: (e.g., slow-motion push-in, FPV sweep)
-           - LENS & GEAR: (e.g., 35mm Anamorphic, 100mm Macro, Sony FX3)
-           - LIGHTING: (e.g., Volumetric fog, Golden Hour, Moody Rim Lighting)
-           - TEXTURE: (e.g., visible skin pores, steam particles, dust motes in sunbeams)
-        3. VARIETY: Scenes MUST alternate between Wide, Medium, and Macro shots.
-
-        Format EXACTLY like this for each scene:
+        Create a {num_scenes}-scene hyper-realistic video ad for {biz_name} ({biz_niche}). Platform: {platform}. {plat_rules}
+        RULES:
+        1. NO TEXT in visual descriptions.
+        2. 6-POINT FRAMEWORK: Style, Subject, Action, Lens, Lighting, Texture.
+        3. Scenes MUST alternate (Wide, Medium, Macro).
+        Format EXACTLY like this:
         ### SCENE [X]
-        🎥 **Enhanced Visual Prompt:** [Min 60 words of descriptive cinematic instruction using the 6-point framework]
-        🗣️ **VoiceOver Script:** [1 snappy, conversational sentence matching the {platform} tone]
-        ✍️ **Manual Text Overlay:** [2-5 bold marketing words]
+        Enhanced Visual Prompt: [Min 60 words describing scene]
+        VoiceOver Script: [1 snappy sentence]
+        Manual Text Overlay: [2-5 bold marketing words]
         """
-        
-        vid_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": "You are an Elite Cinematic Prompt Engineer. You write long, extremely detailed descriptions for AI Video generators."}, {"role": "user", "content": vid_prompt_instruction}]
-        )
+        vid_response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": "You are an Elite Cinematic Prompt Engineer."}, {"role": "user", "content": vid_prompt_instruction}])
         storyboard_data = vid_response.choices[0].message.content
 
-        # Save data to session state
         st.session_state['strategy'] = strategy_data
         st.session_state['storyboard'] = storyboard_data
         st.session_state['biz_name'] = biz_name
 
-# --- DISPLAY TABS ---
 if 'strategy' in st.session_state:
     st.markdown("---")
-    tab1, tab2, tab3, tab4 = st.tabs(["🎁 Offers & Ad Copy", "🎬 Master Storyboard", "💬 Sales Scripts", "📊 ROI Dashboard & PDF"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🎁 Offers & Copy", "🎬 Master Storyboard", "💬 Sales Scripts", "📊 Export Premium PDF"])
     
-    # Split the strategy text safely based on our exact prompt instruction
     try:
         offers_part = st.session_state['strategy'].split("### TASK 3: OUTREACH SCRIPTS")[0].replace("### TASK 1 & 2: MAFIA OFFERS AND AD COPY", "")
         outreach_part = st.session_state['strategy'].split("### TASK 3: OUTREACH SCRIPTS")[1]
@@ -127,19 +160,15 @@ if 'strategy' in st.session_state:
     with tab1:
         st.header("Campaign Strategy")
         st.markdown(offers_part)
-
     with tab2:
         st.header(f"Master Storyboard ({platform})")
-        st.info("💡 **PRO TIP:** Copy these 60+ word visual prompts into Runway Gen-3 Alpha or Luma Dream Machine for 100% photorealism.")
         st.markdown(st.session_state['storyboard'])
-        
     with tab3:
         st.header("Sales & Outreach Scripts")
         st.markdown(outreach_part)
 
     with tab4:
-        st.header("ROI Simulator & PDF Export")
-        
+        st.header("ROI Simulator & Premium PDF Export")
         colA, colB = st.columns(2)
         with colA:
             st.subheader("Live ROI Math")
@@ -152,49 +181,66 @@ if 'strategy' in st.session_state:
             revenue = walk_ins * aov
             profit = revenue - ad_spend
             
-            st.markdown("---")
-            st.metric(label="📍 Captured Local Leads", value=f"{int(ad_spend/cpl)} people")
-            st.metric(label="🚗 Guaranteed Walk-ins", value=f"{walk_ins} customers")
             st.metric(label="💵 Projected Gross Revenue", value=f"${revenue:,.2f}", delta=f"${profit:,.2f} ROI")
 
         with colB:
             st.subheader("Generate Pitch Deck")
-            st.write("Generate a professional white-labeled PDF containing the strategy and storyboard to send to the client.")
+            st.write("Generate a pristine, agency-branded PDF Proposal without Markdown artifacts.")
             
-            # PDF Generation
-            pdf = FPDF()
+            # ==========================================
+            # 📄 PDF ASSEMBLY ENGINE
+            # ==========================================
+            pdf = AgencyPDF()
             pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            pdf.cell(200, 10, txt=f"Marketing Proposal: {st.session_state['biz_name']}", ln=True, align='C')
-            pdf.ln(5)
             
-            pdf.set_font("Arial", 'B', 14)
-            pdf.cell(200, 10, txt="Campaign Strategy", ln=True)
-            pdf.set_font("Arial", size=11)
-            pdf.multi_cell(0, 8, txt=clean_for_pdf(offers_part))
-            
-            pdf.add_page()
-            pdf.set_font("Arial", 'B', 14)
-            pdf.cell(200, 10, txt="Cinematic Video Storyboard", ln=True)
-            pdf.set_font("Arial", size=11)
-            pdf.multi_cell(0, 8, txt=clean_for_pdf(st.session_state['storyboard']))
-            
-            pdf.add_page()
-            pdf.set_font("Arial", 'B', 14)
-            pdf.cell(200, 10, txt="Financial Projections", ln=True, align='C')
-            pdf.set_font("Arial", size=12)
+            # Title Page Data
+            pdf.set_font("Arial", 'B', 22)
+            pdf.set_text_color(10, 37, 64)
+            pdf.cell(0, 15, "Targeted Acquisition Blueprint", 0, 1, 'C')
+            pdf.set_font("Arial", 'I', 14)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(0, 10, f"Prepared exclusively for: {st.session_state['biz_name']}", 0, 1, 'C')
+            pdf.cell(0, 10, f"Date: {datetime.now().strftime('%B %d, %Y')}", 0, 1, 'C')
             pdf.ln(10)
-            pdf.multi_cell(0, 10, txt=f"Proposed Monthly Ad Spend: ${ad_spend}\nEstimated Walk-ins / Conversions: {walk_ins}\nProjected Gross Revenue: ${revenue:,.2f}")
             
-            pdf_file_path = f"proposal_{st.session_state['biz_name'].replace(' ', '_')}.pdf"
+            # Strategy Section
+            pdf.chapter_title("1. Mafia Offers & Campaign Strategy")
+            pdf.print_smart_text(clean_for_pdf(offers_part))
+            
+            # Storyboard Section
+            pdf.add_page()
+            pdf.chapter_title(f"2. Cinematic Storyboard ({platform})")
+            pdf.print_smart_text(clean_for_pdf(st.session_state['storyboard']))
+            
+            # Financial Projections Box
+            pdf.add_page()
+            pdf.chapter_title("3. Financial Projections & ROI")
+            
+            # Draw a beautiful gray box for financials
+            pdf.set_fill_color(245, 248, 250) # Light blue-gray
+            pdf.rect(10, pdf.get_y(), 190, 60, 'F')
+            pdf.set_y(pdf.get_y() + 10)
+            
+            pdf.set_font("Arial", 'B', 14)
+            pdf.set_text_color(10, 37, 64)
+            pdf.cell(0, 10, f"  Proposed Monthly Ad Spend:   ${ad_spend:,.2f}", 0, 1, 'L')
+            pdf.cell(0, 10, f"  Estimated Walk-ins / Sales:   {walk_ins} New Customers", 0, 1, 'L')
+            
+            pdf.set_font("Arial", 'B', 16)
+            pdf.set_text_color(0, 150, 60) # Green for Revenue
+            pdf.cell(0, 15, f"  Projected Gross Revenue:   ${revenue:,.2f}", 0, 1, 'L')
+            
+            # Export
+            pdf_file_path = f"Growth_Blueprint_{st.session_state['biz_name'].replace(' ', '_')}.pdf"
             pdf.output(pdf_file_path)
             
             st.markdown("---")
             with open(pdf_file_path, "rb") as pdf_file:
                 st.download_button(
-                    label="📥 Download Professional PDF Proposal", 
+                    label="📥 Download Premium Agency PDF", 
                     data=pdf_file.read(), 
                     file_name=pdf_file_path, 
                     mime='application/octet-stream', 
-                    type="primary"
+                    type="primary",
+                    use_container_width=True
                 )
