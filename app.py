@@ -14,12 +14,30 @@ except:
     st.error("⚠️ Please add your GROQ_API_KEY to the Streamlit Secrets!")
     st.stop()
 
+# ==========================================
+# 🛡️ ARMOR-PLATED TEXT CLEANER
+# ==========================================
 def clean_for_pdf(text):
-    # Removes emojis and unprintable characters that crash FPDF
-    return re.sub(r'[^\x00-\x7F]+', '', text)
+    if not text:
+        return ""
+    # 1. Replace weird AI quotes/dashes with standard ones
+    text = text.replace('"', '"').replace('"', '"').replace('’', "'").replace('‘', "'").replace('—', '-')
+    
+    # 2. Break apart massively long URLs so they don't crash the PDF
+    words = text.split(' ')
+    safe_words = []
+    for word in words:
+        if len(word) > 65: # If a word/URL is longer than 65 characters, slice it
+            safe_words.append(word[:65] + " " + word[65:])
+        else:
+            safe_words.append(word)
+    text = ' '.join(safe_words)
+    
+    # 3. Strip emojis and force into Latin-1 encoding (The only format FPDF natively accepts)
+    return text.encode('latin-1', 'ignore').decode('latin-1')
 
 # ==========================================
-# 🎨 CUSTOM PDF GENERATOR CLASS (ENTERPRISE)
+# 🎨 CUSTOM PDF GENERATOR CLASS
 # ==========================================
 class AgencyPDF(FPDF):
     def header(self):
@@ -31,10 +49,9 @@ class AgencyPDF(FPDF):
         self.set_font('Arial', 'B', 16)
         self.set_text_color(255, 255, 255)
         self.cell(0, 5, 'HYPERLOCAL GROWTH BLUEPRINT', 0, 1, 'C')
-        self.set_y(35) # Reset Y below header
+        self.set_y(35)
 
     def footer(self):
-        # Light Gray Footer
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(150, 150, 150)
@@ -42,41 +59,38 @@ class AgencyPDF(FPDF):
 
     def chapter_title(self, title, color=(10, 37, 64)):
         self.ln(5)
+        self.set_x(10)
         self.set_font('Arial', 'B', 14)
         self.set_text_color(*color)
         self.cell(0, 10, title, 0, 1, 'L')
         self.set_draw_color(200, 200, 200)
-        self.line(10, self.get_y(), 200, self.get_y()) # Underline
+        self.line(10, self.get_y(), 200, self.get_y())
         self.ln(5)
 
     def print_smart_text(self, text):
-        self.set_font('Arial', '', 11)
-        self.set_text_color(50, 50, 50)
-        
         for line in text.split('\n'):
             line = line.strip()
             if not line:
                 self.ln(4)
                 continue
             
-            # Remove Markdown asterisks
+            self.set_x(10) # Reset X margin to prevent horizontal space errors
             clean_line = line.replace('**', '').replace('*', '')
             
-            # Handle Headers natively
             if clean_line.startswith('### SCENE'):
                 self.ln(6)
-                self.set_font('Arial', 'B', 13)
-                self.set_text_color(0, 112, 243) # Bright Blue for Scenes
-                self.cell(0, 8, clean_line.replace('### ', ''), 0, 1)
+                self.set_font('Arial', 'B', 12)
+                self.set_text_color(0, 112, 243) # Bright Blue
+                self.multi_cell(0, 7, clean_line.replace('### ', ''))
             elif clean_line.startswith('###') or clean_line.startswith('##'):
                 self.ln(4)
                 self.set_font('Arial', 'B', 12)
                 self.set_text_color(10, 37, 64)
-                self.cell(0, 8, clean_line.replace('#', '').strip(), 0, 1)
+                self.multi_cell(0, 7, clean_line.replace('#', '').strip())
             elif clean_line.startswith('- '):
                 self.set_font('Arial', '', 11)
                 self.set_text_color(50, 50, 50)
-                self.multi_cell(0, 6, "  " + chr(149) + " " + clean_line[2:])
+                self.multi_cell(0, 6, "- " + clean_line[2:])
             else:
                 self.set_font('Arial', '', 11)
                 self.set_text_color(50, 50, 50)
@@ -185,39 +199,32 @@ if 'strategy' in st.session_state:
 
         with colB:
             st.subheader("Generate Pitch Deck")
-            st.write("Generate a pristine, agency-branded PDF Proposal without Markdown artifacts.")
+            st.write("Generate a pristine, agency-branded PDF Proposal.")
             
-            # ==========================================
-            # 📄 PDF ASSEMBLY ENGINE
-            # ==========================================
+            # PDF Generation
             pdf = AgencyPDF()
             pdf.add_page()
             
-            # Title Page Data
             pdf.set_font("Arial", 'B', 22)
             pdf.set_text_color(10, 37, 64)
             pdf.cell(0, 15, "Targeted Acquisition Blueprint", 0, 1, 'C')
             pdf.set_font("Arial", 'I', 14)
             pdf.set_text_color(100, 100, 100)
-            pdf.cell(0, 10, f"Prepared exclusively for: {st.session_state['biz_name']}", 0, 1, 'C')
+            pdf.cell(0, 10, f"Prepared exclusively for: {clean_for_pdf(st.session_state['biz_name'])}", 0, 1, 'C')
             pdf.cell(0, 10, f"Date: {datetime.now().strftime('%B %d, %Y')}", 0, 1, 'C')
             pdf.ln(10)
             
-            # Strategy Section
             pdf.chapter_title("1. Mafia Offers & Campaign Strategy")
             pdf.print_smart_text(clean_for_pdf(offers_part))
             
-            # Storyboard Section
             pdf.add_page()
             pdf.chapter_title(f"2. Cinematic Storyboard ({platform})")
             pdf.print_smart_text(clean_for_pdf(st.session_state['storyboard']))
             
-            # Financial Projections Box
             pdf.add_page()
             pdf.chapter_title("3. Financial Projections & ROI")
             
-            # Draw a beautiful gray box for financials
-            pdf.set_fill_color(245, 248, 250) # Light blue-gray
+            pdf.set_fill_color(245, 248, 250)
             pdf.rect(10, pdf.get_y(), 190, 60, 'F')
             pdf.set_y(pdf.get_y() + 10)
             
@@ -227,20 +234,24 @@ if 'strategy' in st.session_state:
             pdf.cell(0, 10, f"  Estimated Walk-ins / Sales:   {walk_ins} New Customers", 0, 1, 'L')
             
             pdf.set_font("Arial", 'B', 16)
-            pdf.set_text_color(0, 150, 60) # Green for Revenue
+            pdf.set_text_color(0, 150, 60)
             pdf.cell(0, 15, f"  Projected Gross Revenue:   ${revenue:,.2f}", 0, 1, 'L')
             
-            # Export
-            pdf_file_path = f"Growth_Blueprint_{st.session_state['biz_name'].replace(' ', '_')}.pdf"
-            pdf.output(pdf_file_path)
-            
-            st.markdown("---")
-            with open(pdf_file_path, "rb") as pdf_file:
-                st.download_button(
-                    label="📥 Download Premium Agency PDF", 
-                    data=pdf_file.read(), 
-                    file_name=pdf_file_path, 
-                    mime='application/octet-stream', 
-                    type="primary",
-                    use_container_width=True
-                )
+            # Final output and download
+            try:
+                # Remove spaces from filename safely
+                safe_biz_name = "".join([c for c in st.session_state['biz_name'] if c.isalpha() or c.isdigit()]).rstrip()
+                pdf_file_path = f"Growth_Blueprint_{safe_biz_name}.pdf"
+                pdf.output(pdf_file_path)
+                
+                with open(pdf_file_path, "rb") as pdf_file:
+                    st.download_button(
+                        label="📥 Download Premium Agency PDF", 
+                        data=pdf_file.read(), 
+                        file_name=pdf_file_path, 
+                        mime='application/octet-stream', 
+                        type="primary",
+                        use_container_width=True
+                    )
+            except Exception as e:
+                st.error(f"Error compiling PDF: {e}")
